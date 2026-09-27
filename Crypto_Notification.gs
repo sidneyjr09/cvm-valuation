@@ -27,7 +27,7 @@ function crypto_email(name,price, buy_price, target) {
     </div>`;
 }
 function crypto_prices_check(){
-  const email = "sidneylimajr09610@gmail.com";
+  const email = "";
   const name_collum = 2;
   const price_collum = 8;
   const target_collum = 7;
