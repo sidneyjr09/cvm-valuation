@@ -1,57 +1,83 @@
-# Price Alerts — Google Sheets + Apps Script
+# Investment Toolkit
 
-A Google Apps Script that monitors prices in an investment spreadsheet on Google Sheets and sends an email alert when an asset reaches a target price.
+Personal tools for monitoring asset prices and estimating the intrinsic value of stocks, built while learning Python and financial analysis.
 
-It currently covers **cryptocurrencies** (a sell alert when the price reaches the target). Stocks and Brazilian REITs (FIIs), which will get a buy alert when the price drops to the ceiling price, are in development.
+| Module | What it does | Stack | Status |
+|---|---|---|---|
+| [`price-alerts`](price-alerts/) | Sends an email alert when an asset in a Google Sheets portfolio reaches a target price | Google Apps Script | Crypto alerts working; stocks and REITs in development |
+| [`cvm-valuation`](cvm-valuation/) | Extracts financial statements from CVM open data to estimate a stock's intrinsic value from its free cash flow | Python, pandas | In progress |
 
-## How it works
+## Repository structure
 
-1. The spreadsheet fetches live quotes with `GOOGLEFINANCE`.
-2. A time-driven trigger runs `crypto_prices_check()` periodically, even when the spreadsheet is closed.
-3. For each row, the script compares the current price with the target price.
-4. When the target is reached, it sends an HTML email and marks the row as `NOTIFIED`, so the same alert is not sent again.
-5. If the price falls back below the target, the status is cleared and the alert is re-armed.
+```
+investment-toolkit/
+├── README.md
+├── .gitignore
+├── price-alerts/
+│   ├── README.md
+│   └── crypto_notification.gs
+└── cvm-valuation/
+    ├── requirements.txt
+    ├── notebooks/
+    │   └── cvm_data_miner.ipynb
+    └── data/                  # local cache of downloaded files (not versioned)
+```
 
-## Expected spreadsheet layout
+## Price alerts
 
-Sheet `CRIPTO`, with data starting at row 3:
+A Google Apps Script bound to an investment spreadsheet. A time-driven trigger compares each asset's live quote (from `GOOGLEFINANCE`) with a target price and sends an HTML email when the target is reached. Each alert fires only once and is re-armed if the price falls back below the target.
 
-| Column | Content |
-|---|---|
-| B | Asset name |
-| D | Purchase price |
-| G | Target (sell) price |
-| H | Current price (`=GOOGLEFINANCE("CURRENCY:BTCBRL")`) |
-| I | Status (written by the script) |
+Setup, spreadsheet layout and limitations are described in [`price-alerts/README.md`](price-alerts/README.md).
 
-The column numbers are defined as constants at the top of `crypto_prices_check()` and can be adjusted.
+## CVM valuation
 
-## Setup
+### Goal
 
-1. In the spreadsheet, open **Extensions → Apps Script**.
-2. Create the script files and paste in the code from this repository.
-3. Run `crypto_prices_check` once manually and grant the requested permissions (spreadsheet access and sending email).
-4. Under **Triggers**, add a trigger for `crypto_prices_check` with the event source **Time-driven**, set to run every 30 minutes.
+Estimate the intrinsic value of Brazilian listed companies with a discounted cash flow (DCF) model, using historical free cash flow taken directly from regulatory filings instead of third-party data providers.
 
-Alerts are sent to the email address of the Google account that installed the script.
+### Data source
 
-## Testing
+The CVM (Comissão de Valores Mobiliários, Brazil's securities regulator) publishes the standardized annual financial statements (DFP) of listed companies on its [open data portal](https://dados.cvm.gov.br/dataset/cia_aberta-doc-dfp). There is one zip file per year since 2010, each containing one CSV per statement:
 
-Temporarily set a low target price in column G and run the function. You should receive the email, and column I should show `NOTIFIED`. Then restore the original value.
+| File | Content | Use in the valuation |
+|---|---|---|
+| `DFC_MI` | Cash flow statement, indirect method | Operating cash flow and capex |
+| `DRE` | Income statement | Revenue, EBIT, net income |
+| `BPA` / `BPP` | Balance sheet (assets / liabilities and equity) | Cash and debt, for net debt |
+| `composicao_capital` | Share capital composition | Share count, for value per share |
 
-## Limitations
+Each statement comes in a consolidated (`con`) and a parent-company-only (`ind`) version. The project uses the consolidated version, which covers the whole group.
 
-- `GOOGLEFINANCE` quotes can be delayed by up to about 20 minutes, so the alerts are not suitable for short-term trading.
-- Free Gmail accounts can send about 100 emails per day through Apps Script.
-- The shortest interval for a time-driven trigger is 1 minute.
+### Progress
 
-## Roadmap
+- [x] List the yearly zip files from the CVM directory page (web scraping with BeautifulSoup)
+- [x] Download a zip file into memory
+- [x] Read a statement CSV into a pandas DataFrame
+- [ ] Filter a company and its latest fiscal year
+- [ ] Identify capex lines and compute free cash flow
+- [ ] Build a multi-year history
+- [ ] Compute net debt and share count
+- [ ] Build the DCF model and the intrinsic value per share
 
-- [ ] Buy alerts for the stocks sheet (price ≤ ceiling price)
-- [ ] Buy alerts for the REITs (FIIs) sheet
-- [ ] Batch reads with `getValues()` for large sheets
-- [ ] A single `check_all()` entry point with one trigger
+### Data caveats
 
-## Tech stack
+- Each zip repeats the previous year as a comparative (`ORDEM_EXERC = PENÚLTIMO`). Only `ÚLTIMO` rows are kept, to avoid duplicates.
+- Companies may restate a filing; when several `VERSAO` values exist, the latest one is used.
+- Values are reported either in thousands or in units (`ESCALA_MOEDA`) and must be normalized.
+- Capex is not a standardized account: its lines under investing activities (account `6.02`) are named differently by each company.
+- Banks and insurers use a different chart of accounts and are out of scope.
 
-Google Apps Script (V8 JavaScript runtime), Google Sheets, `MailApp`, `GOOGLEFINANCE`.
+### Setup
+
+```bash
+cd cvm-valuation
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Then open `notebooks/cvm_data_miner.ipynb` in VS Code or Jupyter, selecting the `.venv` kernel. Requires Python 3.9 or later.
+
+## Disclaimer
+
+This is a personal study project. Nothing in this repository is investment advice.
