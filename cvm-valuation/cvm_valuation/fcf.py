@@ -3,6 +3,7 @@ import pandas as pd
 from .cleaning import split_by_company
 from .config import CAPEX_KEYWORDS, EXCLUDE_KEYWORDS
 from .sources import get_file, open_csv
+from .accounts import find_account
 
 def find_capex(company):
     """Return the total capex of one company.
@@ -21,16 +22,7 @@ def find_cfo(company):
     Values are in thousands of reais. Returns NaN if the account is
     missing and raises ValueError if it appears more than once.
     """
-    is_cfo = company["CD_CONTA"] == "6.01"
-    cfo = company[is_cfo]
-    cfo_value = cfo["VL_CONTA"]
-    if len(cfo_value) == 0:
-        return float("nan")
-    elif len(cfo_value) == 1:
-        return cfo_value.iloc[0]
-    else:
-        code = company["CD_CVM"].iloc[0]
-        raise ValueError(f"Company {code} has {len(cfo_value)} rows for account 6.01")
+    return find_account(company, "6.01")
 
 def build_fcf_table(companies_data, year):
     """Build a table with the free cash flow of each company in one year.

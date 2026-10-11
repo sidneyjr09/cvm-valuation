@@ -41,3 +41,9 @@ FINANCIAL_SECTORS = [
     "Seguradoras e Corretoras",
 ]
 FINANCIAL_KEYWORDS = "|".join(FINANCIAL_SECTORS)
+
+DEBT_ACCOUNTS = ["2.01.04", "2.02.01"]
+CASH_ACCOUNTS = ["1.01.01", "1.01.02"]
+OTHER_LIABILITIES = ("2.01.05.", "2.02.02.")
+LEASE_TERMS = ["arrendament", "direito de uso"]
+LEASE_KEYWORDS = "|".join(LEASE_TERMS)
