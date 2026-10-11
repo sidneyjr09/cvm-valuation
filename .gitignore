@@ -1,4 +1,5 @@
-   .venv/
-   .ipynb_checkpoints/
-   __pycache__/
-   cvm-valuation/data/
+.venv/
+.ipynb_checkpoints/
+__pycache__/
+cvm-valuation/data/
+*.egg-info/
