@@ -64,7 +64,7 @@ def test_balance_table_computes_net_debt(make_statement):
         {"CD_CONTA": "2.02.01", "VL_CONTA": 300.0},
     ])}
     table = build_balance_table(assets_data, liabilities_data, 2025)
-    assert list(table.columns) == ["CD_CVM", "YEAR", "DEBT", "CASH", "NET_DEBT"]
+    assert list(table.columns) == ["CD_CVM", "YEAR", "DEBT", "CASH", "NET_DEBT", "EQUITY"]
     row = table.iloc[0]
     assert row["DEBT"] == 500.0
     assert row["CASH"] == 350.0
