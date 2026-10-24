@@ -47,3 +47,7 @@ CASH_ACCOUNTS = ["1.01.01", "1.01.02"]
 OTHER_LIABILITIES = ("2.01.05.", "2.02.02.")
 LEASE_TERMS = ["arrendament", "direito de uso"]
 LEASE_KEYWORDS = "|".join(LEASE_TERMS)
+
+FCA_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/FCA/DADOS/"
+SHARE_TYPES = ["Ações Ordinárias", "Ações Preferenciais"]
+TICKER_PATTERN = r"[A-Z][A-Z0-9]{3}\d{1,2}"
