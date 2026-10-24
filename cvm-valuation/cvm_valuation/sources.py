@@ -63,6 +63,9 @@ def get_file(link, use_cache=True):
 def open_csv(zip_file, statement, basis, year, doc_type="dfp"):
     """Read a statement CSV from a CVM zip (DFP or ITR) and return a DataFrame."""
     with zipfile.ZipFile(zip_file) as z:
-        csv_name = f"{doc_type}_cia_aberta_{statement}_{basis}_{year}.csv"
+        if basis is None:
+            csv_name = f"{doc_type}_cia_aberta_{statement}_{year}.csv"
+        else:
+            csv_name = f"{doc_type}_cia_aberta_{statement}_{basis}_{year}.csv"
         df = pd.read_csv(z.open(csv_name), sep=";", encoding="latin-1")
     return df
