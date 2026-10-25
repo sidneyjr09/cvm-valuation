@@ -3,7 +3,7 @@ import pandas as pd
 from .accounts import find_account
 from .cleaning import split_by_company
 from .config import CASH_ACCOUNTS, DEBT_ACCOUNTS, EQUITY_ACCOUNT, LEASE_KEYWORDS, OTHER_LIABILITIES
-from .sources import get_file, open_csv
+from .sources import get_file, open_statement
 
 
 def find_debt(liabilities):
@@ -30,15 +30,23 @@ def build_balance_table(assets_data, liabilities_data, year):
     """Build a table with DEBT, CASH, NET_DEBT and EQUITY for each company in one year.
 
     Values are in thousands of reais; NET_DEBT = DEBT - CASH. EQUITY is
-    the consolidated shareholders' equity (account 2.03), used to check
-    the scale of the share count.
+    the shareholders' equity (account 2.03), used to check the scale of
+    the share count.
+
+    A company whose balance sheet repeats one of these accounts with
+    different values (a filing error) gets NaN instead of stopping the
+    whole year, with a warning.
     """
     rows = []
     for code, liabilities in liabilities_data.items():
         assets = assets_data.get(code)
-        debt = find_debt(liabilities)
-        cash = find_cash(assets) if assets is not None else float("nan")
-        equity = find_account(liabilities, EQUITY_ACCOUNT)
+        try:
+            debt = find_debt(liabilities)
+            cash = find_cash(assets) if assets is not None else float("nan")
+            equity = find_account(liabilities, EQUITY_ACCOUNT)
+        except ValueError as error:
+            print(f"Warning ({year}): {error}. Balance sheet set to NaN.")
+            debt = cash = equity = float("nan")
         rows.append({
             "CD_CVM": code, "YEAR": year,
             "DEBT": debt, "CASH": cash, "NET_DEBT": debt - cash, "EQUITY": equity})
@@ -57,8 +65,8 @@ def build_balance_history(dfp_links):
     for year, link in dfp_links.items():
         print(f"Processing {year}...")
         zip_data = get_file(link)
-        assets_data = split_by_company(open_csv(zip_data, "BPA", "con", year, "dfp"))
-        liabilities_data = split_by_company(open_csv(zip_data, "BPP", "con", year, "dfp"))
+        assets_data = split_by_company(open_statement(zip_data, "BPA", year))
+        liabilities_data = split_by_company(open_statement(zip_data, "BPP", year))
         balance_table = build_balance_table(assets_data, liabilities_data, year)
         tables.append(balance_table)
     return pd.concat(tables, ignore_index=True)

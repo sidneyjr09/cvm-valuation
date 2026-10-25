@@ -70,3 +70,19 @@ def test_fcf_table_columns_and_values(make_statement):
     assert row["DENOM_CIA"] == "ALFA S.A."
     assert row["YEAR"] == 2025
     assert row["FCF"] == 300.0
+
+
+def test_fcf_table_repeated_cfo_gives_nan_and_keeps_others(make_statement, capsys):
+    companies_data = {
+        111: make_statement([
+            {"CD_CVM": 111, "CD_CONTA": "6.01", "VL_CONTA": 100.0},
+            {"CD_CVM": 111, "CD_CONTA": "6.01", "VL_CONTA": 120.0},
+        ]),
+        222: make_statement([{"CD_CVM": 222, "CD_CONTA": "6.01", "VL_CONTA": 50.0}]),
+    }
+    table = build_fcf_table(companies_data, 2025).set_index("CD_CVM")
+    assert pd.isna(table.loc[111, "CFO"])
+    assert pd.isna(table.loc[111, "FCF"])
+    assert table.loc[222, "CFO"] == 50.0
+    assert "Company 111" in capsys.readouterr().out
+

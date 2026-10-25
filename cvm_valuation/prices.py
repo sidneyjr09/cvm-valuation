@@ -1,3 +1,6 @@
+import logging
+import warnings
+
 import pandas as pd
 import yfinance as yf
 
@@ -13,10 +16,22 @@ def fetch_market_data(tickers, period=PRICE_PERIOD):
     share count. AVG_TRADED_VALUE is the average daily traded value
     (close x volume) over the period, in reais. Tickers without data
     get NaN.
+
+    Yahoo's messages about tickers without data and the library's own
+    deprecation warnings are hidden; a single line says how many tickers
+    have no price.
     """
     symbols = [f"{ticker}.SA" for ticker in tickers]
-    data = yf.download(symbols, period=period, auto_adjust=False,
-                       progress=False, multi_level_index=True)
+    logger = logging.getLogger("yfinance")
+    level = logger.level
+    logger.setLevel(logging.CRITICAL)
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            data = yf.download(symbols, period=period, auto_adjust=False,
+                               progress=False, multi_level_index=True)
+    finally:
+        logger.setLevel(level)
     close = data["Close"]
     volume = data["Volume"]
     rows = []
@@ -29,7 +44,9 @@ def fetch_market_data(tickers, period=PRICE_PERIOD):
             price = float("nan")
             traded_value = float("nan")
         rows.append({"TICKER": ticker, "PRICE": price, "AVG_TRADED_VALUE": traded_value})
-    return pd.DataFrame(rows)
+    market = pd.DataFrame(rows)
+    print(f"{market['PRICE'].isna().sum()} of {len(market)} tickers have no price on Yahoo Finance")
+    return market
 
 
 def pick_main_ticker(tickers, market):

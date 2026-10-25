@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
+from .cleaning import pick_statement
 from .config import DATA_DIR
 
 def find_zips(url):
@@ -69,3 +70,35 @@ def open_csv(zip_file, statement, basis, year, doc_type="dfp"):
             csv_name = f"{doc_type}_cia_aberta_{statement}_{basis}_{year}.csv"
         df = pd.read_csv(z.open(csv_name), sep=";", encoding="latin-1")
     return df
+
+
+def open_statement(zip_file, statement, year, doc_type="dfp"):
+    """Read a statement from a CVM zip, consolidated or individual.
+
+    Reads both versions and keeps, for each company, the consolidated one
+    when it has values and the individual one otherwise (see
+    pick_statement). A zip without the individual file uses only the
+    consolidated one.
+    """
+    consolidated = open_csv(zip_file, statement, "con", year, doc_type)
+    try:
+        individual = open_csv(zip_file, statement, "ind", year, doc_type)
+    except KeyError:
+        individual = consolidated.iloc[0:0]
+    return pick_statement(consolidated, individual)
+
+
+def company_ids(zip_file, year, doc_type="dfp"):
+    """Return the CNPJ_CIA and CD_CVM of every company in a DFP zip.
+
+    Taken from the balance sheet (BPP), consolidated and individual, so
+    that files identified only by CNPJ can be linked to the CVM code.
+    """
+    tables = [open_csv(zip_file, "BPP", "con", year, doc_type)]
+    try:
+        tables.append(open_csv(zip_file, "BPP", "ind", year, doc_type))
+    except KeyError:
+        pass
+    ids = pd.concat([table[["CNPJ_CIA", "CD_CVM"]] for table in tables], ignore_index=True)
+    return ids.drop_duplicates().reset_index(drop=True)
+

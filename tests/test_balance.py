@@ -100,3 +100,27 @@ def test_balance_history_reads_both_statements(tmp_path, monkeypatch, make_state
     history = build_balance_history({2025: "https://example.com/dfp_cia_aberta_2025.zip"})
     assert len(history) == 1
     assert history["NET_DEBT"].iloc[0] == 150.0
+
+
+def test_balance_table_repeated_account_gives_nan_and_keeps_others(make_statement, capsys):
+    # Engelhart CTP (27553) in 2023: two balance sheets in the same document
+    assets_data = {
+        111: make_statement([
+            {"CD_CVM": 111, "CD_CONTA": "1.01.01", "VL_CONTA": 10.0},
+            {"CD_CVM": 111, "CD_CONTA": "1.01.02", "VL_CONTA": 20.0},
+            {"CD_CVM": 111, "CD_CONTA": "1.01.02", "VL_CONTA": 30.0},
+        ]),
+        222: make_statement([
+            {"CD_CVM": 222, "CD_CONTA": "1.01.01", "VL_CONTA": 10.0},
+            {"CD_CVM": 222, "CD_CONTA": "1.01.02", "VL_CONTA": 20.0},
+        ]),
+    }
+    liabilities_data = {
+        111: make_statement([{"CD_CVM": 111, "CD_CONTA": "2.01.04", "VL_CONTA": 100.0}]),
+        222: make_statement([{"CD_CVM": 222, "CD_CONTA": "2.01.04", "VL_CONTA": 100.0}]),
+    }
+    table = build_balance_table(assets_data, liabilities_data, 2023).set_index("CD_CVM")
+    assert table.loc[111, ["DEBT", "CASH", "NET_DEBT", "EQUITY"]].isna().all()
+    assert table.loc[222, "CASH"] == 30.0
+    assert "Company 111" in capsys.readouterr().out
+

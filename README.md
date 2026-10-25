@@ -49,7 +49,7 @@ Market prices come from Yahoo Finance, through the `yfinance` library.
 ## How the pipeline works
 
 1. **Sources.** List the yearly zip files on the CVM website (web scraping), keep only years whose files are complete, download them with a local cache and read each statement.
-2. **Cleaning.** Keep the latest fiscal year (`ÚLTIMO`), drop fully duplicated rows, convert values reported in units to thousands of reais, and keep only the most recent document of each company (latest `DT_REFER`, then latest `VERSAO`).
+2. **Cleaning.** Use the consolidated statements, or the individual ones for companies without subsidiaries (or whose consolidated form is all zeros). Keep the latest fiscal year (`ÚLTIMO`), drop fully duplicated rows, convert values reported in units to thousands of reais, and keep only the most recent document of each company (latest `DT_REFER`, then latest `VERSAO`).
 3. **Cash flow.** Operating cash flow is the standard account `6.01`. Capex has no standard account, so it is the sum of the lines in `6.02` whose description matches a list of capex terms (fixed and intangible assets, concession contract assets, biological assets, investment properties) and does not match a list of exclusion terms (sales, write-offs, advances). `FCF = CFO + CAPEX`, with capex negative.
 4. **Net debt.** Gross debt is loans and debentures (`2.01.04`, `2.02.01`) plus the lease lines found by name in other liabilities; leases are treated as debt, as under IFRS 16. Cash is `1.01.01` + `1.01.02`.
 5. **Shares.** Shares outstanding are the total shares issued minus treasury shares. The share capital file identifies companies only by CNPJ, so the CVM code is taken from the balance sheet of the same year.
@@ -75,6 +75,8 @@ The notebooks explain each decision with the real cases that motivated it.
 - Values are reported either in thousands or in units (`ESCALA_MOEDA`).
 - A company may have more than one document in the same file (Estrela filed a 3-month and a full-year DFP in 2011).
 - The company registry repeats companies listed in more than one market.
+- A few documents repeat accounts with different values (Engelhart CTP in 2023 has two balance sheets in one document; TRV XLIII reports its 2023 cash flow for two start dates). An account reported for two start dates keeps the longest period; when a needed account is repeated with different values, the company gets NaN for that year and the pipeline prints a warning.
+- Companies without subsidiaries publish only individual statements, and some fill the consolidated form with zeros (TIM in 2024 and 2025, Rio Paranapanema). For these, the individual statements are used.
 - The share capital file only exists in the DFP zips from 2020 onwards, and identifies companies only by CNPJ.
 - The share capital file has no scale column, and many companies report their share count in thousands (60 of the 193 companies valued in 2025, including Ambev, Vale and Cemig). These are detected by a price-to-book ratio below 0.05 and multiplied by 1,000.
 - The FCA securities file includes debt securities, delisted tickers (BRFS3, after the BRF and Marfrig merger), units and invalid codes (`000000`, `NÃO HÁ`).

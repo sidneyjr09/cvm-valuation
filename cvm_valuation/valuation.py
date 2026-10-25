@@ -67,7 +67,9 @@ def fix_share_scale(table, min_price_to_book=MIN_PRICE_TO_BOOK):
     return table
 
 
-def build_valuation(history_full, market, base_years=FCF_BASE_YEARS):
+def build_valuation(history_full, market, base_years=FCF_BASE_YEARS, growth=GROWTH_RATE,
+                    terminal_growth=TERMINAL_GROWTH, discount_rate=DISCOUNT_RATE,
+                    years=PROJECTION_YEARS, growth_by_company=None):
     """Compute the intrinsic value of every investable company.
 
     Uses the latest year of the history. The base FCF is the average FCF
@@ -77,9 +79,17 @@ def build_valuation(history_full, market, base_years=FCF_BASE_YEARS):
     per company, see pick_main_ticker). Share counts reported in
     thousands are fixed first (see fix_share_scale).
 
+    The assumptions default to the values in config.py and can be set
+    for the whole run (`growth`, `terminal_growth`, `discount_rate`,
+    `years`). `growth_by_company` maps a CD_CVM to its own growth rate
+    for the first stage, e.g. {24805: 0.10}; the other companies use
+    `growth`. The rate used for each company is in GROWTH.
+
     Returns one row per investable company with a price, sorted by
     UPSIDE = INTRINSIC_VALUE / PRICE - 1 (from the most undervalued).
     """
+    growth_by_company = growth_by_company or {}
+
     latest_year = history_full["YEAR"].max()
     first_year = latest_year - base_years + 1
 
@@ -95,13 +105,16 @@ def build_valuation(history_full, market, base_years=FCF_BASE_YEARS):
     table = table.merge(market, on="CD_CVM", how="inner")
     table = fix_share_scale(table)
 
+    table["GROWTH"] = [growth_by_company.get(code, growth) for code in table["CD_CVM"]]
     table["INTRINSIC_VALUE"] = [
-        intrinsic_value(fcf, debt, shares)
-        for fcf, debt, shares in zip(table["BASE_FCF"], table["NET_DEBT"], table["SHARES"])
+        intrinsic_value(fcf, debt, shares, growth=rate, terminal_growth=terminal_growth,
+                        discount_rate=discount_rate, years=years)
+        for fcf, debt, shares, rate in zip(table["BASE_FCF"], table["NET_DEBT"],
+                                           table["SHARES"], table["GROWTH"])
     ]
     table["UPSIDE"] = table["INTRINSIC_VALUE"] / table["PRICE"] - 1
     columns = ["CD_CVM", "DENOM_CIA", "TICKER", "BASE_FCF", "NET_DEBT", "EQUITY", "SHARES",
-               "SHARES_FIXED", "PRICE_TO_BOOK", "INTRINSIC_VALUE", "PRICE", "UPSIDE",
+               "SHARES_FIXED", "PRICE_TO_BOOK", "GROWTH", "INTRINSIC_VALUE", "PRICE", "UPSIDE",
                "AVG_TRADED_VALUE"]
     return table[columns].sort_values("UPSIDE", ascending=False).reset_index(drop=True)
 

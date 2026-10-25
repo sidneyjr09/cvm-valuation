@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .sources import get_file, open_csv
+from .sources import company_ids, get_file, open_csv
 
 def prepare_shares(shares):
     """Return the shares outstanding of each company in one year.
@@ -35,7 +35,7 @@ def build_shares_history(dfp_links):
             print(f"No share capital file for {year}, skipping")
             continue
         shares_data = prepare_shares(raw_shares)
-        ids = open_csv(zip_data, "BPP", "con", year, "dfp")[["CNPJ_CIA", "CD_CVM"]].drop_duplicates()
+        ids = company_ids(zip_data, year)
         shares_table = shares_data.merge(ids, on="CNPJ_CIA", how="inner")
         shares_table["YEAR"] = year
         shares_table = shares_table[["CD_CVM", "YEAR", "SHARES"]]

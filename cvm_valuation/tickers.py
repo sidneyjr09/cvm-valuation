@@ -1,7 +1,7 @@
 import pandas as pd
 
 from .config import SHARE_TYPES, TICKER_PATTERN
-from .sources import get_file, open_csv
+from .sources import company_ids, get_file, open_csv
 
 
 def prepare_tickers(securities):
@@ -37,8 +37,7 @@ def build_tickers(fca_links, dfp_links):
     dfp_year = max(dfp_links)
     securities = open_csv(get_file(fca_links[fca_year]), "valor_mobiliario", None, fca_year, "fca")
     tickers = prepare_tickers(securities)
-    bpp = open_csv(get_file(dfp_links[dfp_year]), "BPP", "con", dfp_year, "dfp")
-    ids = bpp[["CNPJ_CIA", "CD_CVM"]].drop_duplicates()
+    ids = company_ids(get_file(dfp_links[dfp_year]), dfp_year)
     tickers = tickers.merge(ids, on="CNPJ_CIA", how="inner")
     tickers = tickers.rename(columns={"Valor_Mobiliario": "SHARE_TYPE"})
     return tickers[["CD_CVM", "TICKER", "SHARE_TYPE"]].reset_index(drop=True)
