@@ -1,57 +1,38 @@
-# Investment Toolkit
+# CVM Valuation
 
-Personal tools for monitoring asset prices and estimating the intrinsic value of stocks, built while learning Python and financial analysis.
-
-| Module | What it does | Stack | Status |
-|---|---|---|---|
-| [`price-alerts`](price-alerts/) | Sends an email alert when an asset in a Google Sheets portfolio reaches a target price | Google Apps Script | Crypto alerts working; stocks and REITs in development |
-| [`cvm-valuation`](cvm-valuation/) | Builds the free cash flow, net debt and share count history of Brazilian listed companies from CVM open data and values them with a DCF model | Python, pandas, pytest | Working end to end |
+Estimates the intrinsic value of Brazilian listed companies with a discounted cash flow (DCF) model, using historical free cash flow, net debt and share counts taken directly from regulatory filings (CVM open data) instead of third-party data providers. Built while learning Python and financial analysis.
 
 ## Repository structure
 
 ```
-investment-toolkit/
+cvm-valuation/
 ├── README.md
 ├── .gitignore
-├── price-alerts/
-│   ├── README.md
-│   └── crypto_notification.gs
-└── cvm-valuation/
-    ├── pyproject.toml          # package definition (pip install -e .)
-    ├── requirements.txt
-    ├── cvm_valuation/          # the pipeline code
-    │   ├── config.py           # paths, URLs, account codes, search terms, DCF assumptions
-    │   ├── sources.py          # find, download (with cache) and read CVM files
-    │   ├── cleaning.py         # clean a statement and split it by company
-    │   ├── accounts.py         # read one account of a company
-    │   ├── fcf.py              # operating cash flow, capex, FCF and history
-    │   ├── balance.py          # debt (including leases), cash, net debt and equity
-    │   ├── shares.py           # shares outstanding
-    │   ├── registry.py         # company registry and flags
-    │   ├── tickers.py          # stock tickers of each company
-    │   ├── prices.py           # market prices and liquidity (Yahoo Finance)
-    │   └── valuation.py        # DCF model, share scale fix, ranking and sensitivity
-    ├── tests/                  # unit tests (pytest)
-    ├── notebooks/
-    │   ├── 01_fcf_history.ipynb  # builds the history and documents the data decisions
-    │   ├── 02_valuation.ipynb    # tickers, prices, DCF and ranking
-    │   └── 03_charts.ipynb       # charts of the FCF history
-    └── data/                   # local cache of downloaded files (not versioned)
+├── pyproject.toml              # package definition (pip install -e .)
+├── requirements.txt
+├── cvm_valuation/              # the pipeline code
+│   ├── config.py               # paths, URLs, account codes, search terms, DCF assumptions
+│   ├── sources.py              # find, download (with cache) and read CVM files
+│   ├── cleaning.py             # clean a statement and split it by company
+│   ├── accounts.py             # read one account of a company
+│   ├── fcf.py                  # operating cash flow, capex, FCF and history
+│   ├── balance.py              # debt (including leases), cash, net debt and equity
+│   ├── shares.py               # shares outstanding
+│   ├── registry.py             # company registry and flags
+│   ├── tickers.py              # stock tickers of each company
+│   ├── prices.py               # market prices and liquidity (Yahoo Finance)
+│   └── valuation.py            # DCF model, share scale fix, ranking and sensitivity
+├── tests/                      # unit tests (pytest)
+├── notebooks/
+│   ├── 01_fcf_history.ipynb    # builds the history and documents the data decisions
+│   ├── 02_valuation.ipynb      # tickers, prices, DCF and ranking
+│   └── 03_charts.ipynb         # charts of the FCF history
+└── data/                       # local cache of downloaded files (not versioned)
 ```
-
-## Price alerts
-
-A Google Apps Script bound to an investment spreadsheet. A time-driven trigger compares each asset's live quote (from `GOOGLEFINANCE`) with a target price and sends an HTML email when the target is reached. Each alert fires only once and is re-armed if the price falls back below the target.
-
-Setup, spreadsheet layout and limitations are described in [`price-alerts/README.md`](price-alerts/README.md).
-
-## CVM valuation
-
-### Goal
 
 Estimate the intrinsic value of Brazilian listed companies with a discounted cash flow (DCF) model, using historical data taken directly from regulatory filings instead of third-party data providers.
 
-### Data sources
+## Data sources
 
 The CVM (Comissão de Valores Mobiliários, Brazil's securities regulator) publishes, on its [open data portal](https://dados.cvm.gov.br/):
 
@@ -65,7 +46,7 @@ The CVM (Comissão de Valores Mobiliários, Brazil's securities regulator) publi
 
 Market prices come from Yahoo Finance, through the `yfinance` library.
 
-### How the pipeline works
+## How the pipeline works
 
 1. **Sources.** List the yearly zip files on the CVM website (web scraping), keep only years whose files are complete, download them with a local cache and read each statement.
 2. **Cleaning.** Keep the latest fiscal year (`ÚLTIMO`), drop fully duplicated rows, convert values reported in units to thousands of reais, and keep only the most recent document of each company (latest `DT_REFER`, then latest `VERSAO`).
@@ -78,7 +59,7 @@ Market prices come from Yahoo Finance, through the `yfinance` library.
 
 The notebooks explain each decision with the real cases that motivated it.
 
-### Results
+## Results
 
 - FCF and net debt history for **2010 to 2025**, with roughly 330 to 460 companies per year; share count from 2020.
 - In the 2025 files: 427 companies with a cash flow statement, 279 listed on the exchange and **223 investable** after removing inactive, category B, non-operating and financial companies. These numbers may change slightly when the CVM republishes a file or updates the registry.
@@ -87,7 +68,7 @@ The notebooks explain each decision with the real cases that motivated it.
   - Vivara, 2025: gross debt R$ 1.23 billion (more than half of it leases), cash R$ 0.40 billion, net debt R$ 0.83 billion and 235,071,814 shares outstanding.
 - A ranking of the liquid investable companies by upside (intrinsic value / price − 1), with a sensitivity table for any company.
 
-### Data quality findings
+## Data quality findings
 
 - Each zip repeats the previous year as a comparative (`ORDEM_EXERC = PENÚLTIMO`).
 - Some files contain fully duplicated rows (320 in 2025).
@@ -98,7 +79,7 @@ The notebooks explain each decision with the real cases that motivated it.
 - The share capital file has no scale column, and many companies report their share count in thousands (60 of the 193 companies valued in 2025, including Ambev, Vale and Cemig). These are detected by a price-to-book ratio below 0.05 and multiplied by 1,000.
 - The FCA securities file includes debt securities, delisted tickers (BRFS3, after the BRF and Marfrig merger), units and invalid codes (`000000`, `NÃO HÁ`).
 
-### Known limitations
+## Known limitations
 
 - A few companies report capex with a positive sign; these cases should be reviewed by hand.
 - Some companies seem to report a wrong `ESCALA_MOEDA`; values should be sanity-checked against company filings.
@@ -110,7 +91,7 @@ The notebooks explain each decision with the real cases that motivated it.
 - The share count history starts in 2020; the valuation only needs the current one.
 - The DCF uses the same assumptions (growth, discount rate) for every company, values common and preferred shares equally, and is driven by historical FCF. The ranking is a screen to find companies worth studying, not investment advice.
 
-### Progress
+## Progress
 
 - [x] List and download the yearly DFP files, with a local cache
 - [x] Clean the statements (comparatives, duplicates, scale, multiple documents)
@@ -125,13 +106,14 @@ The notebooks explain each decision with the real cases that motivated it.
 - [x] Build the DCF model, the intrinsic value per share and a ranking
 - [ ] Share count before 2020 (Formulário de Referência)
 - [ ] Sector-specific DCF assumptions
-- [ ] Use the intrinsic value as the ceiling price in `price-alerts`
+- [ ] Price alerts when a stock trades below its intrinsic value
 
-### Setup
+## Setup
 
 Requires Python 3.11 or later.
 
 ```bash
+git clone https://github.com/<user>/cvm-valuation.git
 cd cvm-valuation
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
@@ -144,6 +126,7 @@ Then open the notebooks in VS Code or Jupyter, selecting the `.venv` kernel, and
 
 1. `notebooks/01_fcf_history.ipynb` builds the history and saves it to `data/history_full.csv`. The first run downloads about 200 MB of CVM files into `data/`; later runs read them from disk. To refresh a year, delete its zip from `data/`.
 2. `notebooks/02_valuation.ipynb` reads that table, finds tickers and prices and runs the DCF. The assumptions are in `config.py`.
+3. `notebooks/03_charts.ipynb` charts the FCF history: totals by year, share of companies with positive FCF, largest cash generators and any single company.
 
 The package can also be used directly:
 
