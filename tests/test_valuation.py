@@ -124,3 +124,26 @@ def test_valuation_fixes_share_scale_before_valuing():
     assert row["SHARES"] == 100_000.0
     assert row["SHARES_FIXED"]
     assert row["INTRINSIC_VALUE"] == pytest.approx(intrinsic_value(100.0, 0.0, 100_000.0))
+
+
+def three_year_history(codes):
+    return make_history([{"CD_CVM": code, "YEAR": year} for code in codes for year in [2023, 2024, 2025]])
+
+
+def test_valuation_uses_assumptions_given_for_the_run():
+    history = three_year_history([111])
+    market = pd.DataFrame({"CD_CVM": [111], "TICKER": ["ALFA3"], "PRICE": [10.0], "AVG_TRADED_VALUE": [1.0]})
+    row = build_valuation(history, market, growth=0.10, discount_rate=0.12, terminal_growth=0.03, years=3).iloc[0]
+    expected = intrinsic_value(100.0, 0.0, 1000.0, growth=0.10, terminal_growth=0.03, discount_rate=0.12, years=3)
+    assert row["GROWTH"] == 0.10
+    assert row["INTRINSIC_VALUE"] == pytest.approx(expected)
+
+
+def test_valuation_uses_growth_by_company():
+    history = three_year_history([111, 222])
+    market = pd.DataFrame({"CD_CVM": [111, 222], "TICKER": ["ALFA3", "BETA3"],
+                           "PRICE": [10.0, 10.0], "AVG_TRADED_VALUE": [1.0, 1.0]})
+    result = build_valuation(history, market, growth=0.05, growth_by_company={222: 0.12}).set_index("CD_CVM")
+    assert result.loc[111, "GROWTH"] == 0.05
+    assert result.loc[222, "GROWTH"] == 0.12
+    assert result.loc[222, "INTRINSIC_VALUE"] == pytest.approx(intrinsic_value(100.0, 0.0, 1000.0, growth=0.12))
