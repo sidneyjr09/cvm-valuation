@@ -113,7 +113,7 @@ The notebooks explain each decision with the real cases that motivated it.
 Requires Python 3.11 or later.
 
 ```bash
-git clone https://github.com/<user>/cvm-valuation.git
+git clone https://github.com/sidneyjr09/cvm-valuation.git
 cd cvm-valuation
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
